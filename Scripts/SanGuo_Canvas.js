@@ -10,9 +10,9 @@
             y: 0,
             width: 0,
             height: 0,
+            items: [],
             init: null,
             render: null,
-            items: [],
             isRendering: false
         }, params);
         
@@ -23,10 +23,10 @@
 
     canvas.prototype = {
         init: function(x, y, w, h){
-            this.width = w || this.width;
-            this.height = h || this.height;
             this.x = x || this.x;
             this.y = y || this.y;
+            this.width = w || this.width;
+            this.height = h || this.height;
             this.dom.attr({
                 'Width': this.width,
                 'Height': this.height
@@ -64,8 +64,8 @@
                 raf();
             }
         },
-        clean: function(){
-            this.getContext().clearRect(0, 0, this.width, this.height);
+        clean: function(x, y, w, h){
+            this.getContext().clearRect(w || 0, y || 0, w || this.width, h || this.height);
         }
     }
 

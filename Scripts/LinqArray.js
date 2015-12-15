@@ -162,6 +162,18 @@
                 return item;
             }).array());
         },
+        order: function(key){
+            this.source.sort(function(a, b){
+                return a[key] > b[key] ? 1 : -1;
+            })
+            return this;
+        },
+        orderDesc: function(){
+            this.source.sort(function(a, b){
+                return b[key] > a[key] ? 1 : -1;
+            })
+            return this;
+        },
         reverse: function () {
             var result = new LinqArray([]);
 
@@ -180,7 +192,7 @@
         any: function (callback) {
             var result;
             this.each(function (i, item) {
-                return result = callback.call(item, i, item);
+                return !(result = callback.call(item, i, item));
             });
             return !!result;
         },

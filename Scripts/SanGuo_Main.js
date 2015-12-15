@@ -1,4 +1,7 @@
 ﻿;(function () {
+    var isFun = CL.isFunction;
+    var getTime = CL.getTime;
+
     var game = function(){
     }
 
@@ -7,6 +10,7 @@
             var body = dom('body');
             var width = body.width();
             var height = body.height();
+            var time = getTime();
             var x, y, img;
             
             /*--------background start --------*/
@@ -52,13 +56,37 @@
             /*--------background end --------*/
             
             /*--------npc start --------*/
-            var frontItems = new linq([new unitManager({
-                x: 100,
-                y: 100,
-                width: 48,
-                height: 64,
-                source: sourceManager.image('./Images/NPC/重步兵/重步兵.png')
-            })]);
+            var player = unitManager({
+                type: 'MountedMissile',
+                x: width / 2,
+                y: height / 2,
+                isPlay: true,
+                afterRender: function(p){
+                }
+            });
+
+            var frontItems = new linq([
+                player,
+                unitManager({
+                    type: 'FootMelee',
+                    x: 0,
+                    y: 100,
+                    target: player,
+                    time: time
+                }),unitManager({
+                    type: 'MountedMelee',
+                    x: 400,
+                    y: 400,
+                    target: player,
+                    time: time
+                }),unitManager({
+                    type: 'FootMissile',
+                    x: 0,
+                    y: 100,
+                    target: player,
+                    time: time
+                })
+            ]);
                 
             var frontCanvas = new canvas({
                 dom: dom('#npcs'),
@@ -67,27 +95,37 @@
                 width: width,
                 height: height,
                 items: frontItems,
-                render: function (t) {
-                    var context = this.getContext();
+                render: function (p) {
+                    var ctx = this.getContext();
+                    p.ctx = ctx;
                     this.clean();
-                    this.items.each(function(){
-                        context.drawImage(
-                            this.source,
-                            0, 0, this.width, this.height,
-                            this.x - this.width / 2, this.y - this.height, this.width, this.height
-                        );
+                    this.items.order('y').each(function(){
+                        if(isFun(this.beforeRender)) this.beforeRender(p);
+                        
+                        if(isFun(this.onRender)) this.onRender(p);
+
+                        if(isFun(this.afterRender)) this.afterRender(p);
                     });
                 }
             });
+
             EventManager.add('click', function(e){
-                frontCanvas.items.each(function(){
-                    this.target = {
-                        x: e.x,
-                        y: e.y
-                    };
-                })
+                var time = getTime();
+                player.target = {
+                    x: e.x,
+                    y: e.y
+                };
+                player.time = time;
+//                frontCanvas.items.each(function(){
+//                    this.target = {
+//                        x: e.x,
+//                        y: e.y
+//                    };
+//                    this.time = time;
+//                })
             }, frontCanvas);
             /*--------npc end --------*/
+
         }
     }
 

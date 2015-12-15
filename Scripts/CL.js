@@ -10,8 +10,14 @@
         isFunction: function (obj) {
             return typeof obj === 'function';
         },
+        isObject: function(obj){
+            return typeof obj === 'object';
+        },
         getTime: function(){
             return (new Date()).getTime();
+        },
+        random: function(range){
+            return Math.round(range * Math.random());
         }
     };
 
@@ -32,11 +38,13 @@
         var args = slice.call(arguments, 1);
         target = target || {};
         CL.each(args, function (i, item) {
-            CL.each(item, function (k, v) {
-                if (item.hasOwnProperty(k)) {
-                    target[k] = v;
-                }
-            });
+            if(item){
+                CL.each(item, function (k, v) {
+                    if (item.hasOwnProperty(k)) {
+                        target[k] = v;
+                    }
+                });
+            }
         });
         return target;
     };
