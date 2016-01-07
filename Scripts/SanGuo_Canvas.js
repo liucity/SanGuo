@@ -10,12 +10,12 @@
             y: 0,
             width: 0,
             height: 0,
-            items: [],
             init: null,
             render: null,
             isRendering: false
         }, params);
         
+        canvas.prototype.items.call(this, params.items);
         canvas.prototype.init.call(this);
         if(CL.isFunction(this.init)) this.init.call(this);
         this.draw();
@@ -51,12 +51,14 @@
                 r,
                 raf;
 
-            if(!this.isRendering && CL.isFunction(this.render)){
+            if(this.isRendering === false && CL.isFunction(this.render)){
                 r = this.render;
                 raf = function(){
-                    target.isRendering = r.call(target, {
-                        time: CL.getTime()
-                    });
+                    if(target.items()){
+                        target.isRendering = r.call(target, {
+                            time: CL.getTime()
+                        });
+                    }
                     if(target.isRendering !== false){
                         requestAnimationFrame(raf);
                     }
@@ -66,6 +68,34 @@
         },
         clean: function(x, y, w, h){
             this.getContext().clearRect(w || 0, y || 0, w || this.width, h || this.height);
+        },
+        items: function(items){
+            var that;
+            if(CL.isArray(items) || items instanceof linq){
+                if(this.items !== canvas.prototype.items) delete this.items;
+                this._items = new linq(items || []);
+                that = this;
+                this._items.each(function(){
+                    this.canvas = that;
+                });
+                this.draw();
+            }
+            return this._items;
+        },
+        add: function(){
+            linq.prototype.add.apply(this.items(), arguments);
+        },
+        remove: function(){
+            linq.prototype.remove.apply(this.items(), arguments);
+        },
+        getImageData: function(x, y, w, h){
+            var data = this.getContext().getImageData(x, y, w, h);
+            var i = 0;
+
+            for (var i = 0; i < w * 4; i += 4) {
+                console.log(data.data[i], data.data[i+1], data.data[i+2], data.data[i+3])
+                //data.data[i] = 0;
+            }
         }
     }
 

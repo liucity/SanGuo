@@ -16,26 +16,6 @@
             /*--------background start --------*/
             var backgroundItems = [];
 
-            var backgroundCanvas = new canvas({
-                dom: dom('#background'),
-                x: 0,
-                y: 0,
-                width: width,
-                height: height,
-                items: backgroundItems,
-                render: function (t) {
-                    var context = this.getContext();
-                    (new linq(this.items)).each(function(){
-                        context.drawImage(
-                            this.source,
-                            0, 0, this.width, this.height,
-                            this.x, this.y, this.width, this.height
-                        );
-                    });
-                    return false;
-                }
-            });
-
             img = sourceManager.image('./Images/mark/46.png', function(){
                 backgroundCanvas.draw();
             });
@@ -53,6 +33,26 @@
                 }
                 x += 48;
             }
+
+            var backgroundCanvas = new canvas({
+                dom: dom('#background'),
+                x: 0,
+                y: 0,
+                width: width,
+                height: height,
+                items: backgroundItems,
+                render: function (p) {
+                    var context = this.getContext();
+                    this.items().each(function(){
+                        context.drawImage(
+                            this.source,
+                            0, 0, this.width, this.height,
+                            this.x, this.y, this.width, this.height
+                        );
+                    });
+                    return false;
+                }
+            });
             /*--------background end --------*/
             
             /*--------npc start --------*/
@@ -73,18 +73,18 @@
                     y: 100,
                     target: player,
                     time: time
-                }),unitManager({
-                    type: 'MountedMelee',
-                    x: 400,
-                    y: 400,
-                    target: player,
-                    time: time
-                }),unitManager({
-                    type: 'FootMissile',
-                    x: 0,
-                    y: 100,
-                    target: player,
-                    time: time
+//                }),unitManager({
+//                    type: 'MountedMelee',
+//                    x: 400,
+//                    y: 400,
+//                    target: player,
+//                    time: time
+//                }),unitManager({
+//                    type: 'FootMissile',
+//                    x: 0,
+//                    y: 100,
+//                    target: player,
+//                    time: time
                 })
             ]);
                 
@@ -99,7 +99,7 @@
                     var ctx = this.getContext();
                     p.ctx = ctx;
                     this.clean();
-                    this.items.order('y').each(function(){
+                    this.items().order('y').each(function(){
                         if(isFun(this.beforeRender)) this.beforeRender(p);
                         
                         if(isFun(this.onRender)) this.onRender(p);
@@ -125,6 +125,7 @@
 //                })
             }, frontCanvas);
             /*--------npc end --------*/
+           console.log(frontCanvas);
 
         }
     }
