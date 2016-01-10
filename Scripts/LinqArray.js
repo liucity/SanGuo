@@ -49,16 +49,15 @@
             return this;
         },
         remove: function (callback) {
-            var result = new LinqArray(),
-                source = this.source;
-            this.each(function (item, i) {
-                if (callback.call(item, item, i)) {
-                    result.add(i);
+            if(!isFunction(callback)){
+                var args = slice.call(arguments, 0);
+                callback = function(item, i){
+                    return args.indexOf(item) > -1;
                 }
-            })
-            result.each(function (item) {
-                splice.call(source, item, 1);
-            }, true);
+            }
+            return this.where(function(item, i){
+                return !callback.call(item, item, i);
+            });
         },
         where: function (callback) {
             var result = new LinqArray();

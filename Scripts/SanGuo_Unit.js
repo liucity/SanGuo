@@ -7,6 +7,32 @@
     var inRange = function(v, min, max){
         return min <= v && v <=max;
     }
+    var updatePosition = function(x, y, tx, ty, distance){
+        var dx = tx - x,
+            dy = ty - y,
+            l = getAvg(dx, dy),
+            percent = Math.min(l, distance) / l,
+            direction;
+
+        dx = dx * percent || 0;
+        dy = dy * percent || 0;
+
+        if(dx || dy){
+            if(Math.abs(dx) > Math.abs(dy)){
+                direction = dx > 0 ? 'right' : 'left';
+            }else {
+                direction = dy > 0 ? 'down' : 'up';
+            }
+        }
+
+        return {
+            x: x + dx,
+            y: y + dy,
+            dx: dx,
+            dy: dy,
+            direction: direction
+        };
+    }
     var image = function(path, action){
         action = action || 'move';
         switch(action){
@@ -30,6 +56,8 @@
                     return 48;
                 case 'attack': 
                     return 64;
+                case 'shot':
+                    return 16;
             }
             return 0;
         },
@@ -41,6 +69,8 @@
                 case 'stand':
                 case 'attack': 
                     return 64;
+                case 'shot':
+                    return 16;
             }
             return 0;
         },
@@ -48,25 +78,28 @@
             switch(this.action){
                 case 'hurt':
                     return 0;
+                case 'shot':
+                    return 0;
                 default: 
                     return this.getWidth() * (Math.floor(step) % 4);
             }
         },
         getSourceY: function(face){
+            switch(face){
+                case 'left': face = 1; break;
+                case 'right': face = 2; break;
+                case 'up': face = 3; break;
+                case 'down':
+                default:
+                    face = 0; break;
+            }
             switch(this.action){
                 case 'hurt':
                     return this.getHeight() * 3;
-                    break;
+                case 'shot':
+                    return 48 * face;
                 default: 
-                    switch(face){
-                        case 'left': return this.getHeight() * 1;
-                        case 'right': return this.getHeight() * 2;
-                        case 'up': return this.getHeight() * 3;
-                        case 'down':
-                        default:
-                            return this.getHeight() * 0;
-                    }
-                    break;
+                    return this.getHeight() * face;
             }
         }
     };
@@ -118,24 +151,32 @@
             return this;
         },
         beforeRender: function(p){
-            this.preparePosition(p);
-            this.getAction(p);
-            if(this.step % 4 <= 2 && (this.step + this.data('step')) % 4 >= 2 && CL.isFunction(this[this.action])){
-                this[this.action](p);
-            }
         },
         onRender: function(p){
-            var img = new image(this.path, this.action);
+            var t = (p.time - this.time) || 16;
+            this.time = p.time;
 
-            this.x += this.data('movedX');
-            this.y += this.data('movedY');
-            this.step += this.data('step') || 0;
+            var position = this.getPosition(t);
+            position.t = t;
+
+            var step = this.getStep(t);
+            var action = this.getAction(position);
+            var face = this.getFace(position);
+
+            var img = new image(this.path, action);
+            
+            if(this.step % 4 <= 2 && (this.step + step) % 4 >= 2 && isFun(this[action])){
+                this[action](p);
+            }
+            
+            this.x += position.dx;
+            this.y += position.dy;
+            this.step = (this.step || 0) + step;
             
             p.ctx.drawImage(
                 img.getSource(),
-                img.getSourceX(this.step), img.getSourceY(this.getFace()), img.getWidth(), img.getHeight(),
+                img.getSourceX(this.step), img.getSourceY(face), img.getWidth(), img.getHeight(),
                 Math.round(this.x) - img.getWidth() / 2, Math.round(this.y - this.height), img.getWidth(), img.getHeight()
-                //Math[p.dx < 0 ? 'ceil': 'floor'](this.x), Math[p.dy < 0 ? 'ceil': 'floor'](this.y - this.height), this.width, this.height
             );
 //            if(this.type === 'MountedMissile'){
 //            console.log(this.path, img.action, img.getSourceX(this.step), img.getSourceY(this.getFace()))
@@ -143,71 +184,53 @@
         },
         afterRender: function(p){
         },
-        preparePosition: function(p){
-            var t = p.time - this.time;
+        inRange: function(x, y){
+            return inRange(x, this.x - this.width / 2, this.x + this.width / 2) && inRange(y, this.y - this.height, this.y);
+        },
+        getPosition: function(t){
             var target = this.target;
-            var dx = 0,
-                dy = 0,
-                l;
+            var tx, ty;
               
             if(target){
                 if(target.type){
-                    if(target.x < this.x){
-                        if(target.x + target.width < this.x){ //tx <- x
-                            dx = target.x + target.width - this.x;
-                        }
+                    if(Math.abs(target.x - this.x) > (target.width / 2 + this.width / 2)){
+                        tx = target.x;
                     }else{
-                        if(target.x > this.x + this.width){ //x -> tx
-                            dx = target.x - this.x - this.width;
-                        }
+                        tx = this.x;
                     }
-                    if(target.y < this.y){
-                        if(target.y + target.height < this.y){//ty <- y
-                            dy = target.y + target.height - this.y;
-                        }
+                    if(Math.abs(target.y - this.y) > 25){
+                        ty = target.y;
                     }else{
-                        if(target.y > this.y + this.height){//x -> ty
-                            dy = target.y - this.y - this.height;
-                        }
+                        ty = this.y;
                     }
                 }else{
-                    dx = target.x - this.x;
-                    dy = target.y - this.y;
+                    tx = target.x;
+                    ty = target.y;
                 }
             }
+            var position = updatePosition(this.x, this.y, tx, ty, t * this.moveSpeed / 25);
             
-            if(!dx && !dy){
+            if(!position.dx && !position.dy){
                 if(target && !target.type){
                     this.target = undefined;
                 }
-            }else{
-                l = getAvg(dx, dy);
-                dx = Math[dx < 0 ? 'max' : 'min'](dx, t * this.moveSpeed / l / 30 * dx);
-                dy = Math[dy < 0 ? 'max' : 'min'](dy, t * this.moveSpeed / l / 30 * dy);
             }
 
-            this.data({
-                'movedX': dx,
-                'movedY': dy,
-                'pasedTime': t
-            });
-            this.getStep();
-            this.time = p.time;
+            return position;
         },
-        getAction: function(p){
+        getAction: function(position){
             var action = '';
-            var t = this.data('pasedTime') || 16;
 
             if(this.timeout){//do hurt & other actions
-                this.timeout -= t;
+                this.timeout -= position.t;
                 if(this.timeout > 0){
-                    return;
+                    return this.action;
                 }else{
                     this.timeout = 0;
                 }
             }
 
-            if(this.data('movedX') || this.data('movedY')){
+            if(position.dx || position.dy){
                 action = 'move';
             }else{
                 if(this.target && this.target.type){
@@ -218,23 +241,23 @@
             }
             
             if(this.action !== action){
+                //if(this.type === 'FootMelee') console.log(this.action, action)
                 this.action = action;
                 this.step = 0;
             }
             return this.action;
         },
-        getStep: function(){
-            var t = this.data('pasedTime') || 16;
-            this.data('step', (this[this.action + 'Speed'] || 0) / t);
+        getStep: function(t){
+            return (this[this.action + 'Speed'] || 0) / t;
         },
-        getFace: function(){
+        getFace: function(position){
             var target = this.target;
-            var dx = this.data('movedX'),
-                dy = this.data('movedY');
+            var dx = position.dx,
+                dy = position.dy;
 
             if(!dx && !dy){
-                dx = target && ((target.x + (target.width || 0) / 2) - (this.x + this.width / 2)) || 0;
-                dy = target && ((target.y + (target.height || 0) / 2) - (this.y + this.height / 2)) || 0;
+                dx = target && (target.x - this.x) || 0;
+                dy = target && (target.y - this.y) || 0;
             }
 
             if(dx || dy){
@@ -249,12 +272,27 @@
         },
         attack: function(p){
             if(this.target && this.target.type){
-                this.target.hurt(this.damage, 300);
+                this.target.hurt(p, this.damage, 300);
             }
         },
-        hurt: function(damage, timeout){
+        hurt: function(p, damage, timeout){
             this.action = 'hurt';
             this.timeout = timeout;
+            this.step = Math.max(0, this.step - 100);
+            this.canvas.add(unitManager({
+                type: 'Damage',
+                x: this.x,
+                y: this.y - this.height,
+                content: damage,
+                time: p.time
+            }));
+//            this._time = this._time || p.time;
+//            this._count = (this._count + 1) || 0;
+            //console.log(this.type, Math.round((p.time - this._time )/ this._count));
+        },
+        remove: function(){
+            if(isFun(this.onRemove)) this.onRemove();
+            this.canvas.remove(this);
         }
     };
 
@@ -268,7 +306,9 @@
             height: 64,
             damage: 10,
             moveSpeed: 2,
-            attackSpeed: 1.5
+            attackSpeed: 1.5,
+            attackRange: 24,
+            isNPC: true
         },
     //轻骑兵
         MountedMelee: {
@@ -277,7 +317,9 @@
             height: 64,
             damage: 10,
             moveSpeed: 3,
-            attackSpeed: 1.5
+            attackSpeed: 1.5,
+            attackRange: 30,
+            isNPC: true
         },
     //弓兵
         FootMissile: {
@@ -286,7 +328,9 @@
             height: 64,
             damage: 10,
             moveSpeed: 1.5,
-            attackSpeed: 1.5
+            attackSpeed: 1.5,
+            attackRange: 50,
+            isNPC: true
         },
     //弓骑兵
         MountedMissile: {
@@ -295,7 +339,82 @@
             height: 64,
             damage: 10,
             moveSpeed: 3,
-            attackSpeed: 1.5
+            attackSpeed: 1.5,
+            attackRange: 50,
+            attack: function(p){
+                var target = this.target;
+                if(target && target.type){
+                    this.canvas.add(unitManager({
+                        type: 'Arrow',
+                        x: this.x,
+                        y: this.y - this.height / 2,
+                        target: {
+                            x: target.x,
+                            y: target.y - this.height / 2,
+                        },
+                        time: p.time,
+                        damage: this.damage,
+                        creater: this
+                    }));
+                }
+            },
+            isNPC: true
         }
-    })
+    });
+
+    extend(unitManager, {
+        Damage: {
+            content: '',
+            beforeRender: function(p){
+            },
+            onRender: function(p){
+                this.canvas.drawText(this.x, Math.round(this.y - (p.time - this.time) * 0.01), this.content, this.fillColor);
+            },
+            afterRender: function(p){
+                if(p.time - this.time > 1000){
+                    this.remove();
+                }
+            },
+            fillColor: function(ctx){
+                ctx.fillStyle = '#FF0000';
+            }
+        },
+        Arrow: {
+            path: './Images/NPC/',
+            action: 'shot',
+            width: 16,
+            height: 16,
+            moveSpeed: 9,
+            beforeRender: function(p){
+            },
+            onRender: function(p){
+                var arrow = this;
+                var position = updatePosition(this.x, this.y, this.target.x, this.target.y, this.moveSpeed * (p.time - this.time) / 30);
+                this.x = position.x;
+                this.y = position.y;
+                this.time = p.time;
+
+                var target = this.canvas.items().first(function(){
+                    return this.isNPC && this !== arrow.creater && this.inRange(position.x, position.y);
+                })
+
+                if(target || !position.dx && !position.dy){
+                    if(target){
+                        target.hurt(p, this.damage, 300);
+                    }
+                    this.remove();
+                }else{
+                    var img = new image(this.path, this.action);
+            
+                    p.ctx.drawImage(
+                        img.getSource(),
+                        img.getSourceX(0), img.getSourceY(position.direction), img.getWidth(), img.getHeight(),
+                        Math.round(this.x) - img.getWidth() / 2, Math.round(this.y - this.height), img.getWidth(), img.getHeight()
+                    );
+                }
+            },
+            afterRender: function(p){
+            }
+        }
+    });
 })();

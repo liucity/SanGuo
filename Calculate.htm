@@ -1,0 +1,113 @@
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head runat="server">
+    <title></title>
+    <link rel="icon" href="data:;base64,=">
+    <style type="text/css">
+        * { margin:0;}
+    </style>
+    <script type="text/javascript" src="./Scripts/LinqArray.js"></script>
+    <script type="text/javascript" src="./Scripts/CL.js"></script>
+    <script type="text/javascript" src="./Scripts/SanGuo_SourceManager.js"></script>
+    <script type="text/javascript" src="./Scripts/SanGuo_Canvas.js"></script>
+</head>
+<body>
+    <canvas id="container"></canvas>
+    <script type="text/javascript">
+        window.onload = function () {
+            var container;
+            var param = function (key) {
+                var reg = new RegExp("(^|&)" + key + "=([^&]*)(&|$)");
+                var r = window.location.search.substr(1).match(reg);
+                if (r != null) return r[2];
+                return null;
+            }
+            var fileName = param('file');
+            var row = param('row') || 4;
+            var col = param('col') || 4;
+            sourceManager.image('./Images/NPC/' + fileName + '.png', function (img) {
+                container = new canvas({
+                    dom: dom('#container'),
+                    x: 0,
+                    y: 0,
+                    width: img.width / col,
+                    height: img.height / row,
+                    items: new linq([img]),
+                    render: function (t) {
+                        var context = this.getContext();
+                        var r, c;
+                        var w = img.width / col,
+                            h = img.height / row;
+                        this.items().each(function () {
+                            for (r = 0; r < row; r++) {
+                                for (c = 0; c < col; c++) {
+                                    context.drawImage(
+                                        this,
+                                        w * c, h * r, w, h,
+                                        0, 0, w, h
+                                    );
+                                }
+                            }
+                        });
+                        var imgData = this.getImageData(0, 0, w, h);
+                        var data = imgData.data;
+                        var map = imgData.map;
+                        //                        var imgData = context.getImageData(0, 0, w, h);
+                        //                        var data = imgData.data;
+                        //                        var len = data.length, i, r, g, b, a;
+                        //                        var map = new linq([]);
+                        //                        for (i = 0; i < len; i += 4) {
+                        //                            r = data[i];
+                        //                            g = data[i + 1];
+                        //                            b = data[i + 2];
+                        //                            a = data[i + 3];
+                        //                            if (r === 0 && g === 0 && b === 0 && a === 0) {
+                        //                                map.add({
+                        //                                    x: i / 4 % w,
+                        //                                    y: Math.floor(i / 4 / w)
+                        //                                });
+                        //                            }
+                        //                        }
+                        //                        var x, y;
+                        //                        map = map.where(function (p) {
+                        //                            x = w - 1 - this.x;
+                        //                            y = h - 1 - this.y;
+                        //                            return map.first(function () {
+                        //                                return this.x === x && this.y === y;
+                        //                            });
+                        //                        })
+                        //                        var r2 = 0, _r2;
+                        //                        x = w % 2 === 0 ? w / 2 : (w - 1) / 2;
+                        //                        y = h % 2 === 0 ? h / 2 : (h - 1) / 2;
+                        //                        map.each(function () {
+                        //                            _r2 = Math.pow(this.x - x, 2) + Math.pow(this.y - y, 2);
+                        //                            console.log(this, _r2)
+                        //                            for (i = 0; i < len / 4; i++) {
+                        //                                if ((r2 <= Math.pow(i % w - x, 2) + Math.pow(Math.floor(i / w) - y, 2)) && !map.any(function () {
+                        //                                    return (this.x === i % w) && (this.y === Math.floor(i / w));
+                        //                                })) {
+                        //                                    return;
+                        //                                }
+                        //                            }
+                        //                            r2 = _r2;
+                        //                        })
+                        //                        map = map.where(function () {
+                        //                            return r2 <= Math.pow(this.x - x, 2) + Math.pow(this.y - y, 2);
+                        //                        })
+                        map.each(function () {
+                            i = 4 * (this.x + this.y * w);
+                            data[i] = 0;
+                            data[i + 1] = 0;
+                            data[i + 2] = 0;
+                            data[i + 3] = 255;
+                        });
+                        //console.log(r2, map);
+                        context.putImageData(imgData, 0, 0);
+
+                        return false;
+                    }
+                });
+            });
+        };
+    </script>
+</body>
+</html>

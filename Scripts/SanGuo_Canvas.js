@@ -1,4 +1,6 @@
 ﻿;(function(){
+    var slice = [].slice;
+
     var canvas = function(params){
         if(!(this instanceof canvas)){
             return new canvas(params);
@@ -15,7 +17,7 @@
             isRendering: false
         }, params);
         
-        canvas.prototype.items.call(this, params.items);
+        canvas.prototype.items.call(this, params.items, false);
         canvas.prototype.init.call(this);
         if(CL.isFunction(this.init)) this.init.call(this);
         this.draw();
@@ -69,32 +71,63 @@
         clean: function(x, y, w, h){
             this.getContext().clearRect(w || 0, y || 0, w || this.width, h || this.height);
         },
-        items: function(items){
-            var that;
+        items: function(items, needDraw){
+            if(!this._items){
+                this._items = new linq([]);
+            }
             if(CL.isArray(items) || items instanceof linq){
                 if(this.items !== canvas.prototype.items) delete this.items;
-                this._items = new linq(items || []);
-                that = this;
-                this._items.each(function(){
-                    this.canvas = that;
-                });
-                this.draw();
+                this._items = new linq([]);
+                this.add.apply(this, items.source || items);
+                if(needDraw !== false) this.draw();
             }
             return this._items;
         },
         add: function(){
-            linq.prototype.add.apply(this.items(), arguments);
+            var that = this;
+            var args = slice.call(arguments, 0);
+            var items = this.items();
+            CL.each(args, function(i, arg){
+                arg.canvas = that;
+                items.add(arg);
+            });
         },
         remove: function(){
-            linq.prototype.remove.apply(this.items(), arguments);
+            this._items = linq.prototype.remove.apply(this._items, arguments);
         },
         getImageData: function(x, y, w, h){
-            var data = this.getContext().getImageData(x, y, w, h);
-            var i = 0;
+            var imgData = this.getContext().getImageData(x, y, w, h);
+            var data= imgData.data;
+            var len = data.length / 4;
+            var i = 0, t;
+            var results = new linq([]);
 
-            for (var i = 0; i < w * 4; i += 4) {
-                console.log(data.data[i], data.data[i+1], data.data[i+2], data.data[i+3])
-                //data.data[i] = 0;
+            for (i = 0; i < len; i++, t = i * 4) {
+                results.add({
+                    x: i % w,
+                    y: Math.floor(i / w),
+                    r: data[t],
+                    g: data[t + 1],
+                    b: data[t + 2],
+                    a: data[t + 3]
+                });
+            }
+            imgData.each = function(){
+            }
+            imgData.map = results;
+            return imgData;
+        },
+        drawText: function(x, y, content, callback){
+            if(content){
+                var ctx = this.getContext();
+                var width = ctx.measureText(content).width;
+                ctx.font = this.font;
+                ctx.textBaseline = 'bottom';
+                if(CL.isFunction(callback)){
+                    callback(ctx);
+                //ctx.fillStyle = item.color || '#FFFFFF';
+                }
+                ctx.fillText(content, Math.round(x - width / 2), y);
             }
         }
     }

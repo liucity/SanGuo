@@ -69,8 +69,8 @@
                 player,
                 unitManager({
                     type: 'FootMelee',
-                    x: 0,
-                    y: 100,
+                    x: 400,
+                    y: 400,
                     target: player,
                     time: time
 //                }),unitManager({
@@ -111,7 +111,9 @@
 
             EventManager.add('click', function(e){
                 var time = getTime();
-                player.target = {
+                player.target = frontCanvas.items().first(function(){
+                    return this !== player && this.inRange(e.x, e.y);
+                })||{
                     x: e.x,
                     y: e.y
                 };
